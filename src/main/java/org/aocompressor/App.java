@@ -10,6 +10,7 @@ import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.util.Objects;
 
 /**
  * GUI for compressing and decompressing Argentum Online resources.
@@ -43,6 +44,7 @@ public class App extends JFrame {
         setSize(390, 280);
         setLocationRelativeTo(null);
         setResizable(false);
+        setIconImage(new ImageIcon(Objects.requireNonNull(getClass().getResource("/icon.png"))).getImage());
 
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -87,7 +89,7 @@ public class App extends JFrame {
         log = new JTextPane();
         log.setText("LOGGER\n\n");
         log.setEditable(false);
-        // log.setFocusable(false); // Disable text selection
+        log.setFocusable(false); // Disable text selection
         log.setFont(new Font("Consolas", Font.PLAIN, 11));
         // log.setLineWrap(true); // Avoid horizontal scrolling
         log.setMargin(new Insets(5, 5, 0, 0));

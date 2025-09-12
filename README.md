@@ -5,6 +5,8 @@ A GUI tool for compressing and decompressing Argentum Online resources into `.ao
 `.ao` files are standard ZIP files with UTF-8 encoding that contain game resources (images, sounds, etc.), preserved
 folder structure, and compression metadata.
 
+![](screenshot.png)
+
 ## Features
 
 - **Compression**: Converts resource folders into compressed `.ao` files
