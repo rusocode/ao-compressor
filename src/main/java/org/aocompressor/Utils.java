@@ -1,5 +1,9 @@
 package org.aocompressor;
 
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,6 +65,25 @@ public class Utils {
     public static String sha256Hex(byte[] data) throws Exception {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         return HexFormat.of().formatHex(md.digest(data));
+    }
+
+    public static JLabel createLink(String text, String url) {
+        JLabel label = new JLabel("<html><a href=\"\">" + text + "</a></html>");
+        label.setFont(new Font("Consolas", Font.PLAIN, 11));
+        label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        label.setToolTipText(url);
+        label.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    if (Desktop.isDesktopSupported()) Desktop.getDesktop().browse(new java.net.URI(url));
+                    else JOptionPane.showMessageDialog(null, "The platform does not support opening links.");
+                } catch (Exception E) {
+                    JOptionPane.showMessageDialog(null, "The link could not be opened: " + E.getMessage());
+                }
+            }
+        });
+        return label;
     }
 
 }

@@ -27,7 +27,8 @@ import java.util.zip.ZipOutputStream;
 /**
  * GUI for compressing and decompressing Argentum Online resources.
  * <p>
- * TODO Mostrar log si es un archivo comprimido en vb6
+ * TODO Show message in log if is a file compressed in VB6
+ * TODO Implement encryption?
  */
 
 public class App extends JFrame {
@@ -74,7 +75,7 @@ public class App extends JFrame {
 
     private JPanel createTopPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
         compressButton = new JButton("Compress");
         compressButton.setFocusable(false);
@@ -86,7 +87,15 @@ public class App extends JFrame {
         decompressButton.addActionListener(this::decompress);
         buttonPanel.add(decompressButton);
 
+        JLabel link = Utils.createLink("Source Code", "https://github.com/rusocode/ao-compressor");
+        link.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
+
+        // Spacer on the left with the same size as the label on the right to balance the center
+        Component spacer = Box.createRigidArea(link.getPreferredSize());
+        panel.add(spacer, BorderLayout.WEST);
+
         panel.add(buttonPanel);
+        panel.add(link, BorderLayout.EAST);
 
         return panel;
     }
@@ -97,11 +106,11 @@ public class App extends JFrame {
         // Log area
         log = new JTextPane();
         log.setEditable(false);
-        // log.setFocusable(false); // Disable text selection
+        log.setFocusable(false);
         log.setFont(new Font("Consolas", Font.PLAIN, 11));
         log.setMargin(new Insets(5, 5, 0, 0));
 
-        // Estilos de color por tipo
+        // Color styles by type
         Style base = log.addStyle("BASE", null);
         Style info = log.addStyle(MessageType.INFO.name(), base);
         StyleConstants.setForeground(info, new Color(0x444444));
@@ -136,11 +145,11 @@ public class App extends JFrame {
                 try {
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                    // Fondo (track)
+                    // Background (track)
                     g2.setColor(progressBar.getBackground());
                     g2.fillRect(b.left, b.top, w, h);
 
-                    // Relleno
+                    // Filling
                     int amountFull = getAmountFull(b, w, h);
                     int x = b.left, y = b.top, fw = amountFull, fh = h;
                     if (progressBar.getOrientation() == JProgressBar.VERTICAL) {
@@ -148,7 +157,7 @@ public class App extends JFrame {
                         fw = w;
                         fh = amountFull;
                     }
-                    // Si esta al maximo, ocupa todo el track
+                    // If it is at maximum, it occupies the entire track
                     if (progressBar.getValue() >= progressBar.getMaximum()) {
                         x = b.left;
                         y = b.top;
@@ -176,29 +185,14 @@ public class App extends JFrame {
 
     private void compress(ActionEvent e) {
         // 1) Select a folder to compress
-        JFileChooser folderChooser = new JFileChooser();
-        folderChooser.setDialogTitle("Select folder to compress");
-        folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        folderChooser.setAcceptAllFileFilterUsed(false);
-        if (folderChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
-        File folderSelected = folderChooser.getSelectedFile();
-        if (folderSelected == null || !folderSelected.exists() || !folderSelected.isDirectory()) {
-            showError("The folder '" + (folderSelected == null ? "" : folderSelected) + "' does not exist.");
-            return;
-        }
-
-        String folderPathString = folderSelected.getAbsolutePath();
+        File folderSelected = chooseDirectory("Select folder to compress");
+        if (folderSelected == null) return;
 
         // 2) Specified .ao file
-        JFileChooser aoChooser = new JFileChooser();
-        aoChooser.setDialogTitle("Specified .ao file");
-        aoChooser.setFileFilter(new FileNameExtensionFilter("AO files (*.ao)", "ao"));
-        aoChooser.setAcceptAllFileFilterUsed(false);
-        if (aoChooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+        String aoPathString = chooseAOToSave();
+        if (aoPathString == null) return;
 
-        String aoSelected = aoChooser.getSelectedFile().getAbsolutePath();
-        String aoPathString = aoSelected.toLowerCase().endsWith(".ao") ? aoSelected : aoSelected + ".ao";
+        String folderPathString = folderSelected.getAbsolutePath();
 
         // Run compression in the background
         SwingWorker<Integer, String> worker = new SwingWorker<>() {
@@ -259,8 +253,7 @@ public class App extends JFrame {
              * @param chunks the list of log messages to process */
             @Override
             protected void process(List<String> chunks) {
-                for (String message : chunks)
-                    appendLog(message);
+                for (String message : chunks) appendLog(message);
             }
 
             /* Finalizes the background compression task and updates the UI accordingly.
@@ -300,32 +293,14 @@ public class App extends JFrame {
 
     private void decompress(ActionEvent e) {
         // 1) Select .ao file
-        JFileChooser aoChooser = new JFileChooser();
-        aoChooser.setDialogTitle("Select .ao file");
-        aoChooser.setFileFilter(new FileNameExtensionFilter("AO files (*.ao)", "ao"));
-        aoChooser.setAcceptAllFileFilterUsed(false);
-        if (aoChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
-        File aoSelected = aoChooser.getSelectedFile();
-        if (aoSelected == null || !aoSelected.exists() || !aoSelected.isFile() || !aoSelected.getName().toLowerCase().endsWith(".ao")) {
-            showError("The file '" + (aoSelected == null ? "" : aoSelected) + "' does not exist.");
-            return;
-        }
+        File aoSelected = chooseAOToOpen();
+        if (aoSelected == null) return;
 
         String aoPathString = aoSelected.getAbsolutePath();
 
         // 2) Select a destination folder
-        JFileChooser folderChooser = new JFileChooser();
-        folderChooser.setDialogTitle("Select destination folder");
-        folderChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        folderChooser.setAcceptAllFileFilterUsed(false);
-        if (folderChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
-
-        File folderSelected = folderChooser.getSelectedFile();
-        if (folderSelected == null || !folderSelected.exists() || !folderSelected.isDirectory()) {
-            showError("The folder '" + (folderSelected == null ? "" : folderSelected) + "' does not exist.");
-            return;
-        }
+        File folderSelected = chooseDirectory("Select destination folder");
+        if (folderSelected == null) return;
 
         String folderPathString = folderSelected.getAbsolutePath();
 
@@ -364,8 +339,7 @@ public class App extends JFrame {
 
             @Override
             protected void process(List<String> chunks) {
-                for (String message : chunks)
-                    appendLog(message);
+                for (String message : chunks) appendLog(message);
             }
 
             @Override
@@ -431,11 +405,11 @@ public class App extends JFrame {
      * This method creates a compressed archive of all the regular files within the specified folder and saves it with the given
      * archive output name.
      * <p>
-     * If an error occurs during the compression process, the output file is deleted.
+     * If an error occurs during compression, the method deletes the output file.
      *
      * @param folderPathString name of the folder to compress
      * @param aoPathString     name of the resulting .ao archive file
-     * @param logger           a Consumer instance for logging error messages
+     * @param logger           a Consumer instance for logging messages or errors compression
      * @return the amount files successfully compressed into the archive or -1 if an error occurs
      */
     private int compress(String folderPathString, String aoPathString, Consumer<String> logger) {
@@ -457,10 +431,10 @@ public class App extends JFrame {
             return -1;
         }
 
-        // Verifica si la carpeta contiene al menos un archivo regular antes de crear el .ao
+        // Check if the folder contains at least one regular file before creating the .ao file
         try (Stream<Path> stream = Files.walk(folderPath)) {
             boolean hasFiles = stream.anyMatch(Files::isRegularFile);
-            if (!hasFiles) return 0; // No crea el archivo .ao
+            if (!hasFiles) return 0; // Do not create the .ao file
         } catch (IOException e) {
             logger.accept("Error walking directory structure. " + e.getMessage());
             return -1;
@@ -512,6 +486,17 @@ public class App extends JFrame {
 
     }
 
+    /**
+     * Decompresses the specified {@code .ao} archive file into a target folder.
+     * <p>
+     * This method extracts all the files contained within the specified compressed archive to a destination folder. Determine the
+     * folder from the given folder path, and the archive file's base name.
+     *
+     * @param aoPathString     path to the input {@code .ao} archive file to decompress
+     * @param folderPathString path to the base folder for the decompressed files
+     * @param logger           a Consumer instance for logging messages or errors during decompression
+     * @return the amount files successfully decompressed, or -1 if an error occurs
+     */
     private int decompress(String aoPathString, String folderPathString, Consumer<String> logger) {
         if (aoPathString == null || aoPathString.isBlank() || folderPathString == null || folderPathString.isBlank()) {
             logger.accept("aoPathString or folderPathString cannot be null, empty or blank.");
@@ -524,7 +509,7 @@ public class App extends JFrame {
             return -1;
         }
 
-        // Obtiene el nombre base del recurso (.ao sin extensión) y define siempre la subcarpeta "<baseName>-descompressed"
+        // Gets the base name of the resource (.ao without extension) and always defines the subfolder "<baseName>-descompressed"
         String baseName = aoPath.getFileName().toString();
         int dot = baseName.lastIndexOf('.');
         if (dot > 0) baseName = baseName.substring(0, dot);
@@ -533,7 +518,7 @@ public class App extends JFrame {
         Path targetFolder = targetRoot.resolve(baseName + "-descompressed");
 
         try {
-            // Crea la carpeta destino si no existe
+            // Create the destination folder if it doesn't exist
             Files.createDirectories(targetFolder);
         } catch (IOException e) {
             logger.accept("Could not create folder '" + targetFolder.getFileName() + "'.");
@@ -553,17 +538,17 @@ public class App extends JFrame {
             while (entries.hasMoreElements()) {
                 ZipEntry entry = entries.nextElement();
 
-                // Construye la ruta de destino
+                // Build the destination route
                 File destFile = targetFolder.resolve(entry.getName()).toFile();
 
-                // Se asegura de que el archivo no escape del directorio destino
+                // Ensure the file doesn't escape the target directory
                 if (!isWithinDirectory(targetFolder.toFile(), destFile)) {
                     logger.accept("File '" + entry.getName() + "' is outside the target directory. Skipping");
                     continue;
                 }
 
                 if (entry.isDirectory()) {
-                    // Crea el directorio
+                    // Create the directory
                     if (!destFile.exists() && !destFile.mkdirs())
                         logger.accept("Could not create directory '" + destFile.getName() + "'.");
                 } else if (decompressFile(zipFile, entry, destFile, logger)) fileCount++;
@@ -581,11 +566,23 @@ public class App extends JFrame {
         }
     }
 
+    /**
+     * Compresses a single file into a zip archive.
+     * <p>
+     * This method adds the specified file to the given ZipOutputStream and logs any errors encountered during the compression
+     * process.
+     *
+     * @param path   base directory path used to calculate the relative path for the zip entry
+     * @param file   file to compress and add to the zip archive
+     * @param zos    ZipOutputStream to write the compressed file to
+     * @param logger a Consumer instance for logging messages or errors during compression
+     * @return true if the method compresses the file and adds it to the archive or false
+     */
     private boolean compressFile(Path path, Path file, ZipOutputStream zos, Consumer<String> logger) {
         String entryName = path.relativize(file).toString().replace('\\', '/');
         try {
             zos.putNextEntry(new ZipEntry(entryName));
-            Files.copy(file, zos); // Simplified and efficient: delegate copying to the JDK
+            Files.copy(file, zos); // Delegate copying to the JDK
             zos.closeEntry();
             return true;
         } catch (IOException e) {
@@ -598,11 +595,20 @@ public class App extends JFrame {
     }
 
     /**
-     * Extrae un archivo individual del ZIP a la ubicacion destino.
+     * Decompresses a specific file from a zip archive to a specified destination.
+     * <p>
+     * This method extracts the content of a given {@link ZipEntry} within a {@link ZipFile} to the specified destination file.
+     * Creates the destination file's parent directories if they don't exist.
+     *
+     * @param zipFile  ZipFile representing the zip archive containing the file to decompress
+     * @param entry    ZipEntry within the zip file to extract it
+     * @param destFile destination file that receives the decompressed content
+     * @param logger   a Consumer instance for logging messages or errors during decompression
+     * @return true if the method decompresses the file or false
      */
     private boolean decompressFile(ZipFile zipFile, ZipEntry entry, File destFile, Consumer<String> logger) {
         try {
-            // Crear directorios padre si no existen (idempotente)
+            // Create parent directories if they don't exist (idempotent)
             Path destPath = destFile.toPath();
             Path parent = destPath.getParent();
             if (parent != null) {
@@ -614,7 +620,7 @@ public class App extends JFrame {
                 }
             }
 
-            // Extrae el archivo utilizando NIO y transferTo
+            // Extract the file using NIO and transferTo
             try (InputStream is = zipFile.getInputStream(entry); OutputStream os = new BufferedOutputStream(Files.newOutputStream(destPath))) {
                 is.transferTo(os);
             }
@@ -632,10 +638,51 @@ public class App extends JFrame {
     }
 
     /**
-     * Valida que un archivo este dentro del directorio permitido (seguridad contra zip bombs).
+     * Validates that a file is within the permitted directory (security against zip bombs).
      */
     private boolean isWithinDirectory(File parentDir, File file) throws IOException {
         return file.getCanonicalPath().startsWith(parentDir.getCanonicalPath() + File.separator) || file.getCanonicalPath().equals(parentDir.getCanonicalPath());
+    }
+
+    private File chooseAOToOpen() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Select .ao file");
+        chooser.setFileFilter(new FileNameExtensionFilter("AO files (*.ao)", "ao"));
+        chooser.setAcceptAllFileFilterUsed(false);
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return null;
+
+        File file = chooser.getSelectedFile();
+        if (file == null || !file.exists() || !file.isFile() || !file.getName().toLowerCase().endsWith(".ao")) {
+            showError("The file '" + (file == null ? "" : file) + "' does not exist.");
+            return null;
+        }
+        return file;
+    }
+
+    private String chooseAOToSave() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Specified .ao file");
+        chooser.setFileFilter(new FileNameExtensionFilter("AO files (*.ao)", "ao"));
+        chooser.setAcceptAllFileFilterUsed(false);
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return null;
+
+        String selected = chooser.getSelectedFile().getAbsolutePath();
+        return selected.toLowerCase().endsWith(".ao") ? selected : selected + ".ao";
+    }
+
+    private File chooseDirectory(String title) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle(title);
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return null;
+
+        File dir = chooser.getSelectedFile();
+        if (dir == null || !dir.exists() || !dir.isDirectory()) {
+            showError("The folder '" + (dir == null ? "" : dir) + "' does not exist.");
+            return null;
+        }
+        return dir;
     }
 
     private enum MessageType {
