@@ -90,6 +90,7 @@ public class App extends JFrame {
         // Log area
         JTextPane logPane = new JTextPane();
         logPane.setEditable(false);
+        logPane.setOpaque(false);
         logPane.setFont(new Font("Consolas", Font.PLAIN, 11));
         logPane.setMargin(new Insets(5, 5, 0, 0));
 
