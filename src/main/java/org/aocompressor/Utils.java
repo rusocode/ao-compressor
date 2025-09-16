@@ -40,9 +40,8 @@ public class Utils {
 
     public static long folderSize(String folderPathString) {
         var folderPath = Paths.get(folderPathString);
-        if (!Files.exists(folderPath) || !Files.isDirectory(folderPath)) {
-            throw new IllegalArgumentException("Path does not exist or is not a directory: " + folderPathString);
-        }
+        if (!Files.exists(folderPath) || !Files.isDirectory(folderPath))
+            JOptionPane.showMessageDialog(null, "The folder '" + folderPathString + "' does not exist or is not a directory.");
         try (Stream<Path> stream = Files.walk(folderPath)) {
             return stream
                     .filter(Files::isRegularFile)
@@ -50,13 +49,13 @@ public class Utils {
                         try {
                             return Files.size(p);
                         } catch (Exception e) {
-                            // Si no se puede leer el tamaño de un archivo, lo contamos como 0
-                            return 0L;
+                            return 0L; // Si no se puede leer el tamaño de un archivo, lo contamos como 0
                         }
                     })
                     .sum();
         } catch (Exception e) {
-            throw new RuntimeException("Error computing folder size for: " + folderPathString, e);
+            JOptionPane.showMessageDialog(null, "An error occurred while calculating the folder size: " + e.getMessage());
+            return 0L;
         }
     }
 
