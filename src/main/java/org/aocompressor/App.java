@@ -4,11 +4,10 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.basic.BasicProgressBarUI;
 import javax.swing.text.BadLocationException;
-import javax.swing.text.Style;
-import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -33,8 +32,9 @@ import java.util.zip.ZipOutputStream;
 
 public class App extends JFrame {
 
+    private Logger logger;
     private JButton compressButton, decompressButton;
-    private JTextPane log;
+    private JTextPane logPane;
     private JProgressBar progressBar;
 
     public App() {
@@ -43,97 +43,91 @@ public class App extends JFrame {
 
     public static void main(String[] args) {
         // main() runs on the "main thread", NOT on the EDT
-        SwingUtilities.invokeLater(() -> {
-            try {
-                // We are now in EDT
-                new App().setVisible(true);
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(null, "Error initializing the application: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
+        SwingUtilities.invokeLater(() -> new App().setVisible(true)); // We are now in EDT
     }
 
     private void initializeGUI() {
-        setTitle("Compressor");
+        setupWindow();
+        setLayout(new BorderLayout());
+        add(createTopPanel(), BorderLayout.NORTH);
+        add(createCenterPanel(), BorderLayout.CENTER);
+    }
+
+    private void setupWindow() {
+        setTitle("AO Compressor");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(500, 280);
         setLocationRelativeTo(null);
         setResizable(false);
         setIconImage(new ImageIcon(Objects.requireNonNull(getClass().getResource("/icon.png"))).getImage());
-
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
-            showError("Error setting the system look and feel: " + e.getMessage());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Cannot set system look and feel: " + e.getMessage());
         }
-
-        setLayout(new BorderLayout());
-
-        add(createTopPanel(), BorderLayout.NORTH);
-        add(createCenterPanel(), BorderLayout.CENTER);
     }
 
     private JPanel createTopPanel() {
         JPanel panel = new JPanel(new BorderLayout());
+
+        // Buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
-
-        compressButton = new JButton("Compress");
-        compressButton.setFocusable(false);
-        compressButton.addActionListener(this::compress);
+        compressButton = createButton("Compress", this::compress);
+        decompressButton = createButton("Decompress", this::decompress);
         buttonPanel.add(compressButton);
-
-        decompressButton = new JButton("Decompress");
-        decompressButton.setFocusable(false);
-        decompressButton.addActionListener(this::decompress);
         buttonPanel.add(decompressButton);
 
         JLabel link = Utils.createLink("Source Code", "https://github.com/rusocode/ao-compressor");
         link.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
 
         // Spacer on the left with the same size as the label on the right to balance the center
-        Component spacer = Box.createRigidArea(link.getPreferredSize());
-        panel.add(spacer, BorderLayout.WEST);
-
+        panel.add(Box.createRigidArea(link.getPreferredSize()), BorderLayout.WEST);
         panel.add(buttonPanel);
         panel.add(link, BorderLayout.EAST);
 
         return panel;
     }
 
+    private JButton createButton(String text, ActionListener listener) {
+        JButton button = new JButton(text);
+        button.setFocusable(false);
+        button.addActionListener(listener);
+        return button;
+    }
+
     private JPanel createCenterPanel() {
-        JPanel bottomPanel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout());
 
         // Log area
-        log = new JTextPane();
-        log.setEditable(false);
-        log.setFocusable(false);
-        log.setFont(new Font("Consolas", Font.PLAIN, 11));
-        log.setMargin(new Insets(5, 5, 0, 0));
+        logPane = new JTextPane();
+        logPane.setEditable(false);
+        logPane.setFont(new Font("Consolas", Font.PLAIN, 11));
+        logPane.setMargin(new Insets(5, 5, 0, 0));
 
-        // Color styles by type
-        Style base = log.addStyle("BASE", null);
-        Style info = log.addStyle(MessageType.INFO.name(), base);
-        StyleConstants.setForeground(info, new Color(0x444444));
-        Style success = log.addStyle(MessageType.SUCCESS.name(), base);
-        StyleConstants.setForeground(success, new Color(0x33BB4C));
-        Style warn = log.addStyle(MessageType.WARN.name(), base);
-        StyleConstants.setForeground(warn, new Color(0xF1A60F));
-        Style error = log.addStyle(MessageType.ERROR.name(), base);
-        StyleConstants.setForeground(error, new Color(0xCC3333));
+        logger = new Logger(logPane);
 
-        JScrollPane scrollPane = new JScrollPane(log);
+        JScrollPane scrollPane = new JScrollPane(logPane);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         scrollPane.setBorder(BorderFactory.createTitledBorder("LOGGER"));
-        bottomPanel.add(scrollPane, BorderLayout.CENTER);
 
         // Progress bar
+        progressBar = createProgressBar();
         JPanel progressPanel = new JPanel(new BorderLayout());
         progressPanel.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
-        progressBar = new JProgressBar(0, 100);
-        progressBar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        progressBar.setForeground(new Color(0x33BB4C));
-        progressBar.setPreferredSize(new Dimension(0, 10));
-        progressBar.setUI(new BasicProgressBarUI() {
+        progressPanel.add(progressBar);
+
+        panel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(progressPanel, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    private JProgressBar createProgressBar() {
+        JProgressBar bar = new JProgressBar(0, 100);
+        bar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        bar.setForeground(new Color(0x33BB4C));
+        bar.setPreferredSize(new Dimension(0, 10));
+        bar.setUI(new BasicProgressBarUI() {
             @Override
             protected void paintDeterminate(Graphics g, JComponent c) {
                 Insets b = progressBar.getInsets();
@@ -175,12 +169,7 @@ public class App extends JFrame {
                 }
             }
         });
-
-        progressPanel.add(progressBar, BorderLayout.CENTER);
-
-        bottomPanel.add(progressPanel, BorderLayout.SOUTH);
-
-        return bottomPanel;
+        return bar;
     }
 
     private void compress(ActionEvent e) {
@@ -386,13 +375,13 @@ public class App extends JFrame {
 
     private void appendLog(String message, MessageType type) {
         if (message == null) message = "";
-        StyledDocument doc = log.getStyledDocument();
+        StyledDocument doc = logPane.getStyledDocument();
         String text = message + "\n";
         try {
-            doc.insertString(doc.getLength(), text, log.getStyle(type.name()));
+            doc.insertString(doc.getLength(), text, logPane.getStyle(type.name()));
         } catch (BadLocationException ignored) {
         }
-        log.setCaretPosition(doc.getLength());
+        logPane.setCaretPosition(doc.getLength());
     }
 
     private void showError(String message) {
