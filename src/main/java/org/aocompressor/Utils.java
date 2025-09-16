@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -68,7 +69,8 @@ public class Utils {
     }
 
     public static JLabel createLink(String text, String url) {
-        JLabel label = new JLabel("<html><a href=\"\">" + text + "</a></html>");
+        String html = String.format("<html><a href=\"%s\">%s</a></html>", url, escapeHtml(text));
+        JLabel label = new JLabel(html);
         label.setFont(new Font("Consolas", Font.PLAIN, 11));
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         label.setToolTipText(url);
@@ -76,14 +78,36 @@ public class Utils {
             @Override
             public void mouseClicked(MouseEvent e) {
                 try {
-                    if (Desktop.isDesktopSupported()) Desktop.getDesktop().browse(new java.net.URI(url));
-                    else JOptionPane.showMessageDialog(null, "The platform does not support opening links.");
-                } catch (Exception E) {
-                    JOptionPane.showMessageDialog(null, "The link could not be opened: " + E.getMessage());
+                    if (Desktop.isDesktopSupported()) {
+                        Desktop desktop = Desktop.getDesktop();
+                        if (desktop.isSupported(Desktop.Action.BROWSE)) desktop.browse(new URI(url));
+                        else JOptionPane.showMessageDialog(null, "The action BROWSE is not supported on this platform.");
+                    } else JOptionPane.showMessageDialog(null, "The platform does not support opening links.");
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, "The link could not be opened.");
                 }
             }
         });
         return label;
+    }
+
+    /**
+     * Escapes special characters in a string for use in HTML content.
+     * <p>
+     * This method replaces characters that have special meanings in HTML, such as '&', '<', '>', '"', and '\'', with their
+     * corresponding HTML entities. It ensures that the resulting string is safe to display in a web environment without
+     * introducing HTML injection vulnerabilities.
+     *
+     * @param text input string to escape or empty string
+     * @return the escaped HTML-safe string
+     */
+    private static String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
 }
