@@ -196,7 +196,7 @@ public class App extends JFrame {
             long compressedSize = Files.size(filePath);
             double ratio = (1.0 - (double) compressedSize / originalSize) * 100.0;
 
-            logger.log(String.format("%s → %s (%.1f%% reduction)", Utils.formatFileSize(originalSize), Utils.formatFileSize(compressedSize), ratio));
+            logger.log(String.format("%s → %s (%.1f%% compressed)", Utils.formatFileSize(originalSize), Utils.formatFileSize(compressedSize), ratio));
 
             byte[] bytes = Files.readAllBytes(filePath);
             logger.log("SHA-256: " + Utils.sha256Hex(bytes));
