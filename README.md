@@ -62,8 +62,3 @@ src/main/java/org/aocompressor/
 standard ZIP tools, this application is recommended for full Argentum Online compatibility. The tool uses SwingWorker to
 perform file operations in background threads, streams file data to minimize memory usage during
 compression/decompression, and provides real-time progress indication for long-running operations.
-
----
-
-**Note**: `.ao` files are compatible with standard ZIP tools, but using this application is recommended to maintain full
-compatibility with Argentum Online.
