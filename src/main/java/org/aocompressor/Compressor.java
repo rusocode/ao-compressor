@@ -9,6 +9,7 @@ import java.util.Enumeration;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -139,8 +140,14 @@ public class Compressor {
 
             }
 
+        } catch (ZipException e) {
+            try {
+                Files.deleteIfExists(folderPath);
+            } catch (IOException ignored) {
+            }
+            return new Result(-1, false, "Invalid zip file: " + e.getMessage());
         } catch (IOException e) {
-            return new Result(-1, false, e.getMessage());
+            return new Result(-1, false, "Cannot read zip file.\n" + e.getMessage());
         }
 
         return new Result(fileCount, true, "Decompression successfully!");
