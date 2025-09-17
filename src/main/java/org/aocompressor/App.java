@@ -45,7 +45,7 @@ public class App extends JFrame {
     private void setupWindow() {
         setTitle("AO Compressor");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(500, 280);
+        setSize(500, 250);
         setLocationRelativeTo(null);
         setResizable(false);
         setIconImage(new ImageIcon(Objects.requireNonNull(getClass().getResource("/icon.png"))).getImage());
@@ -91,6 +91,7 @@ public class App extends JFrame {
         JTextPane logPane = new JTextPane();
         logPane.setEditable(false);
         logPane.setOpaque(false);
+        logPane.setFocusable(false);
         logPane.setFont(new Font("Consolas", Font.PLAIN, 11));
         logPane.setMargin(new Insets(5, 5, 0, 0));
 
