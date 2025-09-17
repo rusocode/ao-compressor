@@ -182,7 +182,8 @@ public class Compressor {
      */
     private boolean decompressFile(ZipFile zipFile, ZipEntry entry, File destFile) {
         try {
-            Files.createDirectories(destFile.toPath().getParent()); // TODO Que hace esto?
+            Path parent = destFile.toPath().getParent();
+            if (parent != null) Files.createDirectories(parent);
             try (InputStream is = zipFile.getInputStream(entry); OutputStream os = Files.newOutputStream(destFile.toPath())) {
                 is.transferTo(os);
             }

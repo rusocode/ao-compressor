@@ -60,7 +60,7 @@ public class App extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
 
         // Buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+        JPanel buttonPanel = new JPanel();
         compressButton = createButton("Compress", this::compress);
         decompressButton = createButton("Decompress", this::decompress);
         buttonPanel.add(compressButton);
@@ -88,16 +88,16 @@ public class App extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
 
         // Log area
-        JTextPane logPane = new JTextPane();
-        logPane.setEditable(false);
-        logPane.setOpaque(false);
-        logPane.setFocusable(false);
-        logPane.setFont(new Font("Consolas", Font.PLAIN, 11));
-        logPane.setMargin(new Insets(5, 5, 0, 0));
+        JTextPane textPane = new JTextPane();
+        textPane.setEditable(false);
+        textPane.setOpaque(false);
+        textPane.setFocusable(false);
+        textPane.setFont(new Font("Consolas", Font.PLAIN, 11));
+        textPane.setMargin(new Insets(5, 5, 0, 0));
 
-        logger = new Logger(logPane);
+        logger = new Logger(textPane);
 
-        JScrollPane scrollPane = new JScrollPane(logPane);
+        JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         // Progress bar
@@ -114,9 +114,8 @@ public class App extends JFrame {
 
     private JProgressBar createProgressBar() {
         JProgressBar bar = new JProgressBar(0, 100);
-        bar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         bar.setForeground(new Color(0x33BB4C));
-        bar.setPreferredSize(new Dimension(0, 10));
+        bar.setPreferredSize(new Dimension(0, 13));
         bar.setUI(new BasicProgressBarUI() {
             @Override
             protected void paintDeterminate(Graphics g, JComponent c) {
@@ -290,15 +289,15 @@ public class App extends JFrame {
     private File chooseFolder(String title) {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle(title);
-        chooser.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
-        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) return null;
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return null;
 
-        File folder = chooser.getSelectedFile();
-        if (folder == null || !folder.exists() || !folder.isDirectory()) {
-            showError("The folder '" + (folder == null ? "" : folder) + "' does not exist.");
+        File file = chooser.getSelectedFile();
+        if (file == null || !file.exists() || !file.isDirectory()) {
+            showError("The file '" + (file == null ? "" : file) + "' does not exist.");
             return null;
         }
-        return folder;
+        return file;
     }
 
 }

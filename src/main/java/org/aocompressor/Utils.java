@@ -10,25 +10,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HexFormat;
-import java.util.Random;
 import java.util.stream.Stream;
 
 /**
  * Utility class for general functions.
  */
 
-public class Utils {
+public final class Utils {
 
-    /**
-     * Generate random string.
-     */
-    public static String generateRandomString(int length, boolean upperOnly) {
-        String chars = upperOnly ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" : "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        Random random = new Random();
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < length; i++)
-            sb.append(chars.charAt(random.nextInt(chars.length())));
-        return sb.toString();
+    private Utils() {
     }
 
     public static String formatFileSize(long bytes) {
@@ -49,12 +39,12 @@ public class Utils {
                         try {
                             return Files.size(p);
                         } catch (Exception e) {
-                            return 0L; // Si no se puede leer el tamaño de un archivo, lo contamos como 0
+                            return 0L;
                         }
                     })
                     .sum();
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "An error occurred while calculating the folder size: " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "An error occurred while calculating the folder size.\n" + e.getMessage());
             return 0L;
         }
     }

@@ -30,21 +30,17 @@ public record Logger(JTextPane textPane) {
         log(message, Level.ERROR);
     }
 
-    // isEventDispatchThread?
-    public void log(String message, Level level) {
-        // Sin el invokeLater, una llamada desde un hilo en segundo plano podria actualizar el JTextPane directamente y causar comportamientos no deterministas o errores sutiles
-        SwingUtilities.invokeLater(() -> {
-            StyledDocument doc = textPane.getStyledDocument();
-            try {
-                doc.insertString(doc.getLength(), (message == null ? "" : message) + "\n", textPane.getStyle(level.name()));
-                textPane.setCaretPosition(doc.getLength());
-            } catch (BadLocationException ignored) {
-            }
-        });
-    }
-
     public void newLine() {
         log("");
+    }
+
+    private void log(String message, Level level) {
+        StyledDocument doc = textPane.getStyledDocument();
+        try {
+            doc.insertString(doc.getLength(), (message == null ? "" : message) + "\n", textPane.getStyle(level.name()));
+        } catch (BadLocationException ignored) {
+        }
+        textPane.setCaretPosition(doc.getLength());
     }
 
     private void initializeStyles() {
@@ -57,12 +53,12 @@ public record Logger(JTextPane textPane) {
         StyleConstants.setForeground(success, new Color(0x33BB4C));
 
         Style warn = textPane.addStyle(Level.WARN.name(), base);
-        StyleConstants.setForeground(warn, new Color(0xF1A60F));
+        StyleConstants.setForeground(warn, new Color(0xE0950F));
 
         Style error = textPane.addStyle(Level.ERROR.name(), base);
         StyleConstants.setForeground(error, new Color(0xCC3333));
     }
 
-    public enum Level {INFO, SUCCESS, WARN, ERROR}
+    private enum Level {INFO, SUCCESS, WARN, ERROR}
 
 }

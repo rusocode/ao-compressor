@@ -95,7 +95,7 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
             onFinish.run();
 
         } catch (Exception e) {
-            logger.error("Unexpected error: " + e.getMessage());
+            logger.error("Unexpected error.\n" + e.getMessage());
             progressBar.setValue(0);
             onFinish.run();
         }
