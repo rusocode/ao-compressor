@@ -8,8 +8,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.stream.Stream;
 
 /**
@@ -29,37 +27,27 @@ public final class Utils {
     }
 
     public static long folderSize(String folderPathString) {
-        var folderPath = Paths.get(folderPathString);
-        if (!Files.exists(folderPath) || !Files.isDirectory(folderPath))
-            JOptionPane.showMessageDialog(null, "The folder '" + folderPathString + "' does not exist or is not a directory.");
+        Path folderPath = Paths.get(folderPathString);
+        if (!Files.exists(folderPath) || !Files.isDirectory(folderPath)) showError("Invalid '" + folderPathString + "'.");
         try (Stream<Path> stream = Files.walk(folderPath)) {
             return stream
                     .filter(Files::isRegularFile)
-                    .mapToLong(p -> {
-                        try {
-                            return Files.size(p);
-                        } catch (Exception e) {
-                            return 0L;
-                        }
-                    })
+                    .mapToLong(Utils::getFileSize)
                     .sum();
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "An error occurred while calculating the folder size.\n" + e.getMessage());
+            showError("Error calculating folder size.\n" + e.getMessage());
             return 0L;
         }
     }
 
-    /**
-     * Calculates SHA-256 hash of a byte array.
-     */
-    public static String sha256Hex(byte[] data) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        return HexFormat.of().formatHex(md.digest(data));
+    public static String getZipName(Path sourceZip) {
+        String zipName = sourceZip.getFileName().toString();
+        int dot = zipName.lastIndexOf('.');
+        return dot > 0 ? zipName.substring(0, dot) : zipName;
     }
 
     public static JLabel createLink(String text, String url) {
-        String html = String.format("<html><a href=\"%s\">%s</a></html>", url, escapeHtml(text));
-        JLabel label = new JLabel(html);
+        JLabel label = new JLabel(String.format("<html><a href=\"%s\">%s</a></html>", url, text));
         label.setFont(new Font("Consolas", Font.PLAIN, 11));
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         label.setToolTipText(url);
@@ -67,36 +55,27 @@ public final class Utils {
             @Override
             public void mouseClicked(MouseEvent e) {
                 try {
-                    if (Desktop.isDesktopSupported()) {
-                        Desktop desktop = Desktop.getDesktop();
-                        if (desktop.isSupported(Desktop.Action.BROWSE)) desktop.browse(new URI(url));
-                        else JOptionPane.showMessageDialog(null, "The action BROWSE is not supported on this platform.");
-                    } else JOptionPane.showMessageDialog(null, "The platform does not support opening links.");
+                    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE))
+                        Desktop.getDesktop().browse(new URI(url));
+                    else showError("Opening links is not supported on this platform.");
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(null, "The link could not be opened.");
+                    showError("Could not open link.\n" + ex.getMessage());
                 }
             }
         });
         return label;
     }
 
-    /**
-     * Escapes special characters in a string for use in HTML content.
-     * <p>
-     * This method replaces characters that have special meanings in HTML, such as '&', '<', '>', '"', and '\'', with their
-     * corresponding HTML entities. It ensures that the resulting string is safe to display in a web environment without
-     * introducing HTML injection vulnerabilities.
-     *
-     * @param text input string to escape or empty string
-     * @return the escaped HTML-safe string
-     */
-    private static String escapeHtml(String text) {
-        if (text == null) return "";
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+    private static long getFileSize(Path path) {
+        try {
+            return Files.size(path);
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    private static void showError(String message) {
+        JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
 }

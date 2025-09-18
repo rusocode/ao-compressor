@@ -19,8 +19,9 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
     private final Runnable onFinish;
     private final String operationType; // "Compressed" or "Decompressed"
     private final String targetPath;
+    private final Supplier<List<String>> prePublishLogs;
 
-    public FileOperationWorker(Supplier<Result> result, Logger logger, JProgressBar progressBar, Runnable onStart, Runnable onFinish, String operationType, String targetPath) {
+    public FileOperationWorker(Supplier<Result> result, Logger logger, JProgressBar progressBar, Runnable onStart, Runnable onFinish, String operationType, String targetPath, Supplier<List<String>> prePublishLogs) {
         this.result = result;
         this.logger = logger;
         this.progressBar = progressBar;
@@ -28,6 +29,7 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
         this.onFinish = onFinish;
         this.operationType = operationType;
         this.targetPath = targetPath;
+        this.prePublishLogs = prePublishLogs;
     }
 
     /* Contains the logic for the heavy task (runs in the background).
@@ -47,13 +49,12 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
         long time = (System.nanoTime() - start) / 1_000_000;
 
         if (result.success() && result.filesProcessed() > 0) {
-            String msg = String.format("%s %d file%s to '%s' in %dms",
-                    operationType,
-                    result.filesProcessed(),
-                    result.filesProcessed() != 1 ? "s" : "",
-                    targetPath,
-                    time);
-            publish(msg); // Send interim results (call process() method) to the EDT (Event Dispatch Thread)
+            publish(String.format("%s %d file%s to '%s'", operationType, result.filesProcessed(), result.filesProcessed() != 1 ? "s" : "", targetPath)); // Send interim results (call process() method) to the EDT (Event Dispatch Thread)
+            if (prePublishLogs != null) {
+                List<String> pre = prePublishLogs.get();
+                if (pre != null) pre.forEach(this::publish);
+            }
+            publish("Time: " + time + "ms");
         }
 
         return result;

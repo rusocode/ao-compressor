@@ -9,7 +9,6 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Date;
 import java.util.Objects;
 
 /**
@@ -86,8 +85,12 @@ public class App extends JFrame {
 
     private JPanel createCenterPanel() {
         JPanel panel = new JPanel(new BorderLayout());
+        panel.add(createLogPanel(), BorderLayout.CENTER);
+        panel.add(createProgressPanel(), BorderLayout.SOUTH);
+        return panel;
+    }
 
-        // Log area
+    private JScrollPane createLogPanel() {
         JTextPane textPane = new JTextPane();
         textPane.setEditable(false);
         textPane.setOpaque(false);
@@ -99,17 +102,15 @@ public class App extends JFrame {
 
         JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        return scrollPane;
+    }
 
-        // Progress bar
+    private JPanel createProgressPanel() {
         progressBar = createProgressBar();
         JPanel progressPanel = new JPanel(new BorderLayout());
         progressPanel.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 5));
         progressPanel.add(progressBar);
-
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(progressPanel, BorderLayout.SOUTH);
-
-        return panel;
+        return progressPanel;
     }
 
     private JProgressBar createProgressBar() {
@@ -163,87 +164,62 @@ public class App extends JFrame {
 
     private void compress(ActionEvent e) {
         // 1) Select a folder to compress
-        File folder = chooseFolder("Select folder to compress");
-        if (folder == null) return;
+        File sourceDir = chooseDirectory("Select folder to compress");
+        if (sourceDir == null) return;
 
-        // 2) Specified .ao file
-        String file = chooseAOToSave();
-        if (file == null) return;
+        // 2) Specified .ao (zip file) file
+        String targetFile = chooseAOToSave();
+        if (targetFile == null) return;
 
-        logger.log("Starting compression of '" + folder.getName() + "' folder...");
+        logger.log("Starting compression of '" + sourceDir.getName() + "' folder...");
 
         new FileOperationWorker(
-                () -> {
-                    var result = compressor.compress(folder, file);
-                    if (result.success() && result.filesProcessed() > 0) logCompressionStats(folder, file);
-                    return result;
-                },
+                () -> compressor.compress(sourceDir, targetFile),
                 logger,
                 progressBar,
                 () -> setUIEnabled(false),
                 () -> setUIEnabled(true),
                 "Compressed",
-                file
+                targetFile,
+                () -> {
+                    try {
+                        Path targetPath = Path.of(targetFile);
+                        long originalSize = Utils.folderSize(sourceDir.getAbsolutePath());
+                        long compressedSize = Files.size(targetPath);
+                        double ratio = (1.0 - (double) compressedSize / originalSize) * 100.0;
+                        return java.util.List.of(String.format("%s → %s (%.1f%% compressed)", Utils.formatFileSize(originalSize), Utils.formatFileSize(compressedSize), ratio));
+                    } catch (Exception ex) {
+                        return java.util.List.of("Could not calculate compression stats: " + ex.getMessage());
+                    }
+                }
         ).execute();
 
     }
 
-    private void logCompressionStats(File folder, String file) {
-        try {
-            Path filePath = Path.of(file);
-            long originalSize = Utils.folderSize(folder.getAbsolutePath());
-            long compressedSize = Files.size(filePath);
-            double ratio = (1.0 - (double) compressedSize / originalSize) * 100.0;
-
-            logger.log(String.format("%s → %s (%.1f%% compressed)", Utils.formatFileSize(originalSize), Utils.formatFileSize(compressedSize), ratio));
-
-            byte[] bytes = Files.readAllBytes(filePath);
-            logger.log("SHA-256: " + Utils.sha256Hex(bytes));
-        } catch (Exception e) {
-            logger.warn("Could not calculate compression stats: " + e.getMessage());
-        }
-    }
-
     private void decompress(ActionEvent e) {
-        // 1) Select .ao file
-        File file = chooseAOToOpen();
-        if (file == null) return;
+        // 1) Select .ao (zip file) file
+        File sourceFile = chooseAOToOpen();
+        if (sourceFile == null) return;
 
-        // 2) Select a destination folder
-        File folder = chooseFolder("Select destination folder");
-        if (folder == null) return;
+        // 2) Select a target folder
+        File targetDir = chooseDirectory("Select target folder");
+        if (targetDir == null) return;
 
-        // Calculate the effective decompression path
-        String baseName = file.getName();
-        int dot = baseName.lastIndexOf('.');
-        if (dot > 0) baseName = baseName.substring(0, dot);
-        String effectiveTargetPath = folder.getAbsolutePath() + File.separator + baseName + "-descompressed";
+        // Calculate the decompression path
+        String targetPath = targetDir.toPath().resolve(Utils.getZipName(sourceFile.toPath()) + "-decompressed").toString();
 
-        logger.log("Starting decompression of '" + file.getName() + "' file...");
+        logger.log("Starting decompression of '" + sourceFile.getName() + "' file...");
 
         new FileOperationWorker(
-                () -> {
-                    var result = compressor.decompress(file.getAbsolutePath(), folder.getAbsolutePath(), logger::log);
-                    if (result.success() && result.filesProcessed() > 0) logDecompressionStats(file);
-                    return result;
-                },
+                () -> compressor.decompress(sourceFile.getAbsolutePath(), targetDir.getAbsolutePath(), logger::log),
                 logger,
                 progressBar,
                 () -> setUIEnabled(false),
                 () -> setUIEnabled(true),
                 "Decompressed",
-                effectiveTargetPath
+                targetPath,
+                null
         ).execute();
-    }
-
-    private void logDecompressionStats(File file) {
-        try {
-            logger.log("Last Modified: " + new Date(file.lastModified()));
-            byte[] bytes = Files.readAllBytes(file.toPath());
-            logger.log("SHA-256: " + Utils.sha256Hex(bytes));
-        } catch (Exception e) {
-            logger.warn("Could not read file stats: " + e.getMessage());
-        }
     }
 
     /**
@@ -256,10 +232,6 @@ public class App extends JFrame {
         decompressButton.setEnabled(enabled);
     }
 
-    private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
-    }
-
     private File chooseAOToOpen() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Select .ao file");
@@ -269,7 +241,7 @@ public class App extends JFrame {
 
         File file = chooser.getSelectedFile();
         if (file == null || !file.exists() || !file.isFile() || !file.getName().toLowerCase().endsWith(".ao")) {
-            showError("The file '" + (file == null ? "" : file) + "' does not exist.");
+            JOptionPane.showMessageDialog(this, "The file '" + (file == null ? "" : file) + "' does not exist.", "Error", JOptionPane.ERROR_MESSAGE);
             return null;
         }
         return file;
@@ -286,7 +258,7 @@ public class App extends JFrame {
         return selected.toLowerCase().endsWith(".ao") ? selected : selected + ".ao";
     }
 
-    private File chooseFolder(String title) {
+    private File chooseDirectory(String title) {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle(title);
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -294,7 +266,7 @@ public class App extends JFrame {
 
         File file = chooser.getSelectedFile();
         if (file == null || !file.exists() || !file.isDirectory()) {
-            showError("The file '" + (file == null ? "" : file) + "' does not exist.");
+            JOptionPane.showMessageDialog(this, "The folder '" + (file == null ? "" : file) + "' does not exist.", "Error", JOptionPane.ERROR_MESSAGE);
             return null;
         }
         return file;
