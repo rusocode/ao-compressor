@@ -26,15 +26,8 @@ public final class Utils {
     }
 
     public static long getDirectorySize(Path directory) {
-        if (!Files.isDirectory(directory)) {
-            showError("Invalid '" + directory + "'.");
-            return 0L;
-        }
         try (Stream<Path> paths = Files.walk(directory)) {
-            return paths
-                    .filter(Files::isRegularFile)
-                    .mapToLong(Utils::getFileSize)
-                    .sum();
+            return paths.filter(Files::isRegularFile).mapToLong(Utils::getFileSize).sum();
         } catch (Exception e) {
             showError("Error calculating folder size.\n" + e.getMessage());
             return 0L;
