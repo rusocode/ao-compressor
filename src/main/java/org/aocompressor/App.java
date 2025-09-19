@@ -189,7 +189,7 @@ public class App extends JFrame {
                         double ratio = (1.0 - (double) compressedSize / directorySize) * 100.0;
                         return List.of(String.format("%s → %s (%.1f%% compressed)", Utils.formatFileSize(directorySize), Utils.formatFileSize(compressedSize), ratio));
                     } catch (Exception ex) {
-                        return List.of("Could not calculate compression stats: " + ex.getMessage());
+                        return List.of("Could not calculate compression.\n" + ex.getMessage());
                     }
                 }
         ).execute();
@@ -266,7 +266,7 @@ public class App extends JFrame {
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return null;
 
         File file = chooser.getSelectedFile();
-        if (file == null || !file.exists() || !file.isDirectory()) {
+        if (file == null || !file.isDirectory()) {
             Utils.showError("The folder '" + (file == null ? "" : file) + "' is invalid.");
             return null;
         }

@@ -12,13 +12,17 @@ import java.util.function.Supplier;
 
 public class FileOperationWorker extends SwingWorker<Result, String> {
 
+    /** The result of the operation. */
     private final Supplier<Result> result;
     private final Logger logger;
     private final JProgressBar progressBar;
+    /** Callbacks for when the operation starts and finishes. */
     private final Runnable onStart;
     private final Runnable onFinish;
-    private final String operationType; // "Compressed" or "Decompressed"
+    /** Type operation (compress or decompress). */
+    private final String operationType;
     private final String targetPath;
+    /** Pre-publish logs. */
     private final Supplier<List<String>> prePublishLogs;
 
     public FileOperationWorker(Supplier<Result> result, Logger logger, JProgressBar progressBar, Runnable onStart, Runnable onFinish, String operationType, String targetPath, Supplier<List<String>> prePublishLogs) {
@@ -34,24 +38,26 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
 
     /* Contains the logic for the heavy task (runs in the background).
      *
-     * Executes the compression task in the background, compressing files from the specified input folder into the
-     * specified output file. While the task runs, the UI shows progress. */
+     * Executes the compression/decompression tasks in the background. While the task runs, the UI shows progress. */
     @Override
     protected Result doInBackground() {
+        // Prepare the UI
         SwingUtilities.invokeLater(() -> {
-            onStart.run();
-            // Used to set the progress bar to indeterminate mode (marquee animation without an actual percentage)
-            progressBar.setIndeterminate(true);
+            onStart.run(); // Disable buttons
+            progressBar.setIndeterminate(true); // Enable "marquee" animation
         });
 
         long start = System.nanoTime();
-        Result result = this.result.get();
+        Result result = this.result.get(); // Execute compress() or decompress()
         long time = (System.nanoTime() - start) / 1_000_000;
 
+
         if (result.success() && result.filesProcessed() > 0) {
+            // Send a message to EDT
             publish(String.format("%s %d file%s to '%s'", operationType, result.filesProcessed(), result.filesProcessed() != 1 ? "s" : "", targetPath)); // Send interim results (call process() method) to the EDT (Event Dispatch Thread)
             if (prePublishLogs != null) {
                 List<String> pre = prePublishLogs.get();
+                // Send additional logs (e.g., compression statistics)
                 if (pre != null) pre.forEach(this::publish);
             }
             publish("Time: " + time + "ms");
@@ -60,10 +66,10 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
         return result;
     }
 
-    // Processes intermediate results (a list of log messages) in the EDT (Event Dispatch Thread) and appends them to the log
+    // Updates the UI by processing the intermediate results (a list of log messages) in the EDT (event dispatch thread) and adding them to the log
     @Override
     protected void process(List<String> chunks) {
-        chunks.forEach(logger::log);
+        chunks.forEach(logger::log); // Receives each message sent by publish() and displays them in the log
     }
 
     /* Finalizes the background compression task and updates the UI accordingly.
@@ -74,9 +80,8 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
     @Override
     protected void done() {
         try {
-            // Get the result of the operation task
-            Result result = get();
-            progressBar.setIndeterminate(false);
+            Result result = get(); // Get the result of the doInBackground()
+            progressBar.setIndeterminate(false); // Disable "marquee" animation
 
             // If compression successful
             if (result.success()) {
@@ -100,7 +105,7 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
             progressBar.setValue(0);
             progressBar.setIndeterminate(false);
             logger.newLine();
-            onFinish.run();
+            onFinish.run(); // Enable buttons
         }
     }
 
