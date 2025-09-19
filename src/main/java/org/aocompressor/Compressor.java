@@ -14,6 +14,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * The Compressor class provides functionality to compress files into a ZIP archive and decompress files from a ZIP archive. It
+ * handles operations related to file inclusion, security validations, and external logging during decompression.
+ */
+
 public class Compressor {
 
     public Result compress(File sourceDir, String targetZip) {

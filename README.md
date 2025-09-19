@@ -51,7 +51,7 @@ The application window provides two primary operations:
 src/main/java/org/aocompressor/
 ├── App.java                    # Main application class with GUI logic
 ├── Compressor.java             # Core compression/decompression engine
-├── FileOperationWorker.java    # Background task worker for async operations
+├── TaskRunner.java             # Builder pattern for background task execution with progress tracking
 ├── Logger.java                 # Colorized logging system
 └── Utils.java                  # Utility functions (file operations, formatting, etc.)
 ```

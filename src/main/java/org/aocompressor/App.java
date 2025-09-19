@@ -174,25 +174,17 @@ public class App extends JFrame {
 
         logger.log("Starting compression of '" + sourceDir.getName() + "' folder...");
 
-        new FileOperationWorker(
-                () -> compressor.compress(sourceDir, targetFile),
-                logger,
-                progressBar,
-                () -> setUIEnabled(false),
-                () -> setUIEnabled(true),
-                "Compressed",
-                targetFile,
-                () -> {
-                    try {
-                        long directorySize = Utils.getDirectorySize(sourceDir.toPath());
-                        long compressedSize = Files.size(Path.of(targetFile));
-                        double ratio = (1.0 - (double) compressedSize / directorySize) * 100.0;
-                        return List.of(String.format("%s → %s (%.1f%% compressed)", Utils.formatFileSize(directorySize), Utils.formatFileSize(compressedSize), ratio));
-                    } catch (Exception ex) {
-                        return List.of("Could not calculate compression.\n" + ex.getMessage());
-                    }
-                }
-        ).execute();
+        // Executes a task to compress a folder with progress tracking, UI updates, and logging
+        TaskRunner.run()
+                .task(() -> compressor.compress(sourceDir, targetFile))
+                .logger(logger)
+                .progressBar(progressBar)
+                .onStart(() -> setUIEnabled(false))
+                .onFinish(() -> setUIEnabled(true))
+                .operationType("Compressed")
+                .targetPath(targetFile)
+                .postLogs(() -> calculateCompression(sourceDir.toPath(), Path.of(targetFile)))
+                .execute();
 
     }
 
@@ -210,16 +202,30 @@ public class App extends JFrame {
 
         logger.log("Starting decompression of '" + sourceFile.getName() + "' file...");
 
-        new FileOperationWorker(
-                () -> compressor.decompress(sourceFile.getAbsolutePath(), targetDir.getAbsolutePath(), logger::log),
-                logger,
-                progressBar,
-                () -> setUIEnabled(false),
-                () -> setUIEnabled(true),
-                "Decompressed",
-                targetPath,
-                null
-        ).execute();
+        // Executes a task to decompress a file with progress tracking, UI updates, and logging
+        TaskRunner.run()
+                .task(() -> compressor.decompress(sourceFile.getAbsolutePath(), targetDir.getAbsolutePath(), logger::log))
+                .logger(logger)
+                .progressBar(progressBar)
+                .onStart(() -> setUIEnabled(false))
+                .onFinish(() -> setUIEnabled(true))
+                .operationType("Decompressed")
+                .targetPath(targetPath)
+                .execute();
+    }
+
+    private List<String> calculateCompression(Path sourceDir, Path targetFile) {
+        try {
+            long directorySize = Utils.getDirectorySize(sourceDir);
+            long compressedSize = Files.size(targetFile);
+            double ratio = (1.0 - (double) compressedSize / directorySize) * 100.0;
+            return List.of(String.format("%s → %s (%.1f%% compressed)",
+                    Utils.formatFileSize(directorySize),
+                    Utils.formatFileSize(compressedSize),
+                    ratio));
+        } catch (Exception e) {
+            return List.of("Could not calculate compression.\n" + e.getMessage());
+        }
     }
 
     /**
