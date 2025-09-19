@@ -7,7 +7,6 @@ import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.stream.Stream;
 
 /**
@@ -26,11 +25,13 @@ public final class Utils {
         return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
     }
 
-    public static long folderSize(String folderPathString) {
-        Path folderPath = Paths.get(folderPathString);
-        if (!Files.exists(folderPath) || !Files.isDirectory(folderPath)) showError("Invalid '" + folderPathString + "'.");
-        try (Stream<Path> stream = Files.walk(folderPath)) {
-            return stream
+    public static long getDirectorySize(Path directory) {
+        if (!Files.isDirectory(directory)) {
+            showError("Invalid '" + directory + "'.");
+            return 0L;
+        }
+        try (Stream<Path> paths = Files.walk(directory)) {
+            return paths
                     .filter(Files::isRegularFile)
                     .mapToLong(Utils::getFileSize)
                     .sum();
@@ -40,10 +41,10 @@ public final class Utils {
         }
     }
 
-    public static String getZipName(Path sourceZip) {
-        String zipName = sourceZip.getFileName().toString();
-        int dot = zipName.lastIndexOf('.');
-        return dot > 0 ? zipName.substring(0, dot) : zipName;
+    public static String getFileName(Path file) {
+        String fileName = file.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        return dot > 0 ? fileName.substring(0, dot) : fileName;
     }
 
     public static JLabel createLink(String text, String url) {
@@ -66,16 +67,16 @@ public final class Utils {
         return label;
     }
 
+    public static void showError(String message) {
+        JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
     private static long getFileSize(Path path) {
         try {
             return Files.size(path);
         } catch (Exception e) {
             return 0L;
         }
-    }
-
-    private static void showError(String message) {
-        JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
 }

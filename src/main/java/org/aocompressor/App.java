@@ -9,6 +9,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -51,7 +52,7 @@ public class App extends JFrame {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Cannot set system look and feel: " + e.getMessage());
+            Utils.showError("Cannot set system look and feel.\n" + e.getMessage());
         }
     }
 
@@ -183,13 +184,12 @@ public class App extends JFrame {
                 targetFile,
                 () -> {
                     try {
-                        Path targetPath = Path.of(targetFile);
-                        long originalSize = Utils.folderSize(sourceDir.getAbsolutePath());
-                        long compressedSize = Files.size(targetPath);
-                        double ratio = (1.0 - (double) compressedSize / originalSize) * 100.0;
-                        return java.util.List.of(String.format("%s → %s (%.1f%% compressed)", Utils.formatFileSize(originalSize), Utils.formatFileSize(compressedSize), ratio));
+                        long directorySize = Utils.getDirectorySize(sourceDir.toPath());
+                        long compressedSize = Files.size(Path.of(targetFile));
+                        double ratio = (1.0 - (double) compressedSize / directorySize) * 100.0;
+                        return List.of(String.format("%s → %s (%.1f%% compressed)", Utils.formatFileSize(directorySize), Utils.formatFileSize(compressedSize), ratio));
                     } catch (Exception ex) {
-                        return java.util.List.of("Could not calculate compression stats: " + ex.getMessage());
+                        return List.of("Could not calculate compression stats: " + ex.getMessage());
                     }
                 }
         ).execute();
@@ -206,7 +206,7 @@ public class App extends JFrame {
         if (targetDir == null) return;
 
         // Calculate the decompression path
-        String targetPath = targetDir.toPath().resolve(Utils.getZipName(sourceFile.toPath()) + "-decompressed").toString();
+        String targetPath = targetDir.toPath().resolve(Utils.getFileName(sourceFile.toPath()) + "-decompressed").toString();
 
         logger.log("Starting decompression of '" + sourceFile.getName() + "' file...");
 
@@ -233,29 +233,30 @@ public class App extends JFrame {
     }
 
     private File chooseAOToOpen() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Select .ao file");
-        chooser.setFileFilter(new FileNameExtensionFilter("AO files (*.ao)", "ao"));
-        chooser.setAcceptAllFileFilterUsed(false);
+        JFileChooser chooser = createAOChooser("Select .ao file");
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return null;
 
         File file = chooser.getSelectedFile();
-        if (file == null || !file.exists() || !file.isFile() || !file.getName().toLowerCase().endsWith(".ao")) {
-            JOptionPane.showMessageDialog(this, "The file '" + (file == null ? "" : file) + "' does not exist.", "Error", JOptionPane.ERROR_MESSAGE);
+        if (file == null || !Files.isRegularFile(file.toPath()) || !file.getName().toLowerCase().endsWith(".ao")) {
+            Utils.showError("The file '" + (file == null ? "" : file) + "' is invalid.");
             return null;
         }
         return file;
     }
 
     private String chooseAOToSave() {
+        JFileChooser chooser = createAOChooser("Specified .ao file");
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return null;
+        String path = chooser.getSelectedFile().getAbsolutePath();
+        return path.toLowerCase().endsWith(".ao") ? path : path + ".ao";
+    }
+
+    private JFileChooser createAOChooser(String title) {
         JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Specified .ao file");
+        chooser.setDialogTitle(title);
         chooser.setFileFilter(new FileNameExtensionFilter("AO files (*.ao)", "ao"));
         chooser.setAcceptAllFileFilterUsed(false);
-        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return null;
-
-        String selected = chooser.getSelectedFile().getAbsolutePath();
-        return selected.toLowerCase().endsWith(".ao") ? selected : selected + ".ao";
+        return chooser;
     }
 
     private File chooseDirectory(String title) {
@@ -266,7 +267,7 @@ public class App extends JFrame {
 
         File file = chooser.getSelectedFile();
         if (file == null || !file.exists() || !file.isDirectory()) {
-            JOptionPane.showMessageDialog(this, "The folder '" + (file == null ? "" : file) + "' does not exist.", "Error", JOptionPane.ERROR_MESSAGE);
+            Utils.showError("The folder '" + (file == null ? "" : file) + "' is invalid.");
             return null;
         }
         return file;

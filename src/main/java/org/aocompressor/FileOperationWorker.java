@@ -98,6 +98,8 @@ public class FileOperationWorker extends SwingWorker<Result, String> {
         } catch (Exception e) {
             logger.error("Unexpected error.\n" + e.getMessage());
             progressBar.setValue(0);
+            progressBar.setIndeterminate(false);
+            logger.newLine();
             onFinish.run();
         }
     }
